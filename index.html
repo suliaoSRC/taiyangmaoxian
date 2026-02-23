@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>晶晶大冒险</title>
+    <title>晶晶大冒险 · 像素幸存者</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
@@ -416,7 +416,33 @@
         const STAR_SPAWN_RATE = 3000; // 毫秒
         const ENEMY_SPAWN_RATE = 1500; // 毫秒
         const LEVEL_UP_EXPERIENCE = 100;
-        
+        const gameFont = '"Press Start 2P", monospace';  // 修复：添加像素字体变量
+
+        // 文本图标映射（修复：添加缺失的变量声明）
+        const textElements = {
+            player: {
+                1: '日', // 日
+                2: '昌', // 昌
+                3: '晶'  // 晶
+            },
+            sun: '日',
+            star: '辰',
+            shield: '🛡️',
+            enemies: {
+                ufo: '🛸',
+                archer: '🏹',
+                drop: '💧'
+            },
+            weapons: {
+                fireball: '🔥',
+                lightning: '⚡',
+                star: '⭐',
+                laser: '💫',
+                missile: '🚀',
+                bomb: '💣'
+            }
+        };
+
         // 游戏状态
         let gameState = {
             running: false,
@@ -450,9 +476,10 @@
             lastStarSpawn: 0,
             enemySpawnRate: ENEMY_SPAWN_RATE,
             enemySpawnCount: 0,
-            difficultyMultiplier: 1
+            difficultyMultiplier: 1,
+            enemiesPerSpawn: 1  // 修复：只保留一个定义
         };
-        
+
         // 游戏音效系统
         class SoundSystem {
             constructor() {
@@ -513,7 +540,7 @@
             }
             
             playTone(frequency, duration, type = 'sine') {
-                if (!this.enabled || !this.audioContext) return;
+                if (!this.enabled || !this.audioContext) return;   // 修复：增加空值检查
                 
                 try {
                     // 恢复AudioContext（用户交互后才能播放）
@@ -543,7 +570,7 @@
             }
             
             playExplosionSound() {
-                if (!this.enabled || !this.audioContext) return;
+                if (!this.enabled || !this.audioContext) return;   // 修复：增加空值检查
                 
                 try {
                     for (let i = 0; i < 3; i++) {
@@ -561,7 +588,7 @@
             }
             
             playZapSound() {
-                if (!this.enabled || !this.audioContext) return;
+                if (!this.enabled || !this.audioContext) return;   // 修复：增加空值检查
                 
                 try {
                     for (let i = 0; i < 5; i++) {
@@ -579,7 +606,7 @@
             }
             
             playLaserSound() {
-                if (!this.enabled || !this.audioContext) return;
+                if (!this.enabled || !this.audioContext) return;   // 修复：增加空值检查
                 
                 try {
                     const oscillator = this.audioContext.createOscillator();
@@ -604,7 +631,7 @@
             }
             
             playMissileSound() {
-                if (!this.enabled || !this.audioContext) return;
+                if (!this.enabled || !this.audioContext) return;   // 修复：增加空值检查
                 
                 try {
                     const oscillator = this.audioContext.createOscillator();
@@ -629,7 +656,7 @@
             }
             
             playLevelUpSound() {
-                if (!this.enabled || !this.audioContext) return;
+                if (!this.enabled || !this.audioContext) return;   // 修复：增加空值检查
                 
                 try {
                     const notes = [440, 554, 659, 880]; // C major arpeggio
@@ -644,7 +671,7 @@
             }
             
             playGameStartSound() {
-                if (!this.enabled || !this.audioContext) return;
+                if (!this.enabled || !this.audioContext) return;   // 修复：增加空值检查
                 
                 try {
                     const notes = [220, 330, 440, 554, 659, 880];
@@ -659,7 +686,7 @@
             }
             
             playGameOverSound() {
-                if (!this.enabled || !this.audioContext) return;
+                if (!this.enabled || !this.audioContext) return;   // 修复：增加空值检查
                 
                 try {
                     const notes = [440, 330, 220, 110];
@@ -700,28 +727,6 @@
                 }
             }
         }
-            player: {
-                1: '日', // 日
-                2: '昌', // 昌
-                3: '晶'  // 晶
-            },
-            sun: '日',
-            star: '辰',
-            shield: '🛡️',
-            enemies: {
-                ufo: '🛸',
-                archer: '🏹',
-                drop: '💧'
-            },
-            weapons: {
-                fireball: '🔥',
-                lightning: '⚡',
-                star: '⭐',
-                laser: '💫',
-                missile: '🚀',
-                bomb: '💣'
-            }
-        };
 
         // 游戏元素
         const canvas = document.getElementById('gameCanvas');
@@ -846,8 +851,9 @@
             }
         };
         
-        // 初始化游戏
+        // 初始化游戏（修复：将 last spawn 时间设为当前时间，避免开局爆发）
         function initGame() {
+            const now = Date.now();
             gameState = {
                 running: false,
                 player: {
@@ -875,13 +881,12 @@
                 },
                 score: 0,
                 survivalTime: 0,
-                lastEnemySpawn: 0,
-                lastSunSpawn: 0,
-                lastStarSpawn: 0,
+                lastEnemySpawn: now,
+                lastSunSpawn: now,
+                lastStarSpawn: now,
                 enemySpawnRate: ENEMY_SPAWN_RATE,
                 enemySpawnCount: 0,
                 difficultyMultiplier: 1,
-                enemiesPerSpawn: 1,
                 enemiesPerSpawn: 1
             };
             
@@ -1046,7 +1051,7 @@
                     applyLevelUpOption(option);
                     levelUpScreen.classList.add('hidden');
                     gameState.running = true;
-                    lastTime = performance.now();
+                    lastTime = performance.now();  // 重置时间，避免delta过大
                     requestAnimationFrame(gameLoop);
                 });
                 
@@ -1186,7 +1191,6 @@
         
         // 显示敌人生成指示器（简单实现）
         function showEnemySpawnIndicator(enemy) {
-            // 在敌人生成位置显示一个红色脉冲圈（通过临时DOM元素）
             const indicator = document.createElement('div');
             indicator.className = 'enemy-spawn-indicator';
             indicator.style.left = enemy.x + 'px';
@@ -1686,9 +1690,13 @@
             requestAnimationFrame(gameLoop);
         }
         
-        // 键盘事件
+        // 键盘事件（修复：阻止默认滚动）
         document.addEventListener('keydown', (e) => {
-            switch (e.key) {
+            const key = e.key;
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 's', 'S', 'a', 'A', 'd', 'D'].includes(key)) {
+                e.preventDefault();
+            }
+            switch (key) {
                 case 'ArrowUp':
                 case 'w':
                 case 'W':
