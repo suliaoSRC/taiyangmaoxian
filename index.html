@@ -67,11 +67,17 @@
             color: #F5F5F5;
             overflow: hidden;
             touch-action: none;
+            margin: 0;
+            padding: 0;
         }
         
         canvas {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
+            display: block;
+            max-width: 100vw;
+            max-height: 100vh;
+            margin: 0 auto;
         }
         
         .game-container {
@@ -81,6 +87,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
         
         .ui-overlay {
@@ -626,7 +633,9 @@
                 lastStarSpawn: 0,
                 enemySpawnRate: ENEMY_SPAWN_RATE,
                 enemySpawnCount: 0,
-                difficultyMultiplier: 1
+                difficultyMultiplier: 1,
+                enemiesPerSpawn: 1,
+                enemiesPerSpawn: 1
             };
             
             updateUI();
@@ -907,6 +916,11 @@
             if (gameState.enemySpawnCount % 10 === 0) {
                 gameState.difficultyMultiplier += 0.1;
                 gameState.enemySpawnRate = Math.max(ENEMY_SPAWN_RATE * (1 - (gameState.difficultyMultiplier - 1) * 0.1), 500);
+                
+                // 每20个敌人增加一次生成的敌人数量
+                if (gameState.enemySpawnCount % 20 === 0) {
+                    gameState.enemiesPerSpawn = Math.min(gameState.enemiesPerSpawn + 1, 5); // 最多一次生成5个敌人
+                }
             }
         }
         
@@ -1283,7 +1297,10 @@
             
             // 生成敌人
             if (currentTime - gameState.lastEnemySpawn > gameState.enemySpawnRate) {
-                spawnEnemy();
+                // 根据当前难度一次生成多个敌人
+                for (let i = 0; i < gameState.enemiesPerSpawn; i++) {
+                    spawnEnemy();
+                }
                 gameState.lastEnemySpawn = currentTime;
             }
             
@@ -1313,7 +1330,7 @@
             
             // 绘制玩家
             const player = gameState.player;
-            ctx.font = '36px ' + gameFont;
+            ctx.font = '48px ' + gameFont;
             ctx.fillStyle = '#FFD700';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
