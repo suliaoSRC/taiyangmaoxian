@@ -453,9 +453,253 @@
             difficultyMultiplier: 1
         };
         
-        // 游戏资源 - 使用文字代替图片
-        const gameFont = 'Press Start 2P, monospace';
-        const textElements = {
+        // 游戏音效系统
+        class SoundSystem {
+            constructor() {
+                this.audioContext = null;
+                this.masterGain = null;
+                this.sounds = {};
+                this.enabled = true;
+                this.volume = 0.3;
+                
+                this.init();
+            }
+            
+            init() {
+                try {
+                    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.audioContext = new AudioContext();
+                    this.masterGain = this.audioContext.createGain();
+                    this.masterGain.connect(this.audioContext.destination);
+                    this.masterGain.gain.value = this.volume;
+                    
+                    // 初始化所有音效
+                    this.initSounds();
+                } catch (error) {
+                    console.warn('Web Audio API not supported:', error);
+                }
+            }
+            
+            initSounds() {
+                // 玩家相关音效
+                this.sounds.playerHurt = () => this.playTone(200, 0.1, 'square');
+                this.sounds.playerHeal = () => this.playTone(400, 0.2, 'sine');
+                this.sounds.playerLevelUp = () => this.playLevelUpSound();
+                
+                // 敌人相关音效
+                this.sounds.enemyHit = () => this.playTone(300, 0.1, 'triangle');
+                this.sounds.enemyDeath = () => this.playExplosionSound();
+                
+                // 收集品音效
+                this.sounds.collectSun = () => this.playTone(600, 0.3, 'sine');
+                this.sounds.collectStar = () => this.playTone(800, 0.2, 'sine');
+                this.sounds.collectShield = () => this.playTone(500, 0.25, 'triangle');
+                
+                // 武器音效
+                this.sounds.fireFireball = () => this.playTone(250, 0.15, 'sawtooth');
+                this.sounds.fireLightning = () => this.playZapSound();
+                this.sounds.fireStar = () => this.playTone(450, 0.1, 'sine');
+                this.sounds.fireLaser = () => this.playLaserSound();
+                this.sounds.fireMissile = () => this.playMissileSound();
+                this.sounds.fireBomb = () => this.playTone(150, 0.3, 'square');
+                
+                // UI音效
+                this.sounds.buttonClick = () => this.playTone(880, 0.05, 'square');
+                this.sounds.levelUpSelect = () => this.playTone(660, 0.1, 'sine');
+                
+                // 游戏状态音效
+                this.sounds.gameStart = () => this.playGameStartSound();
+                this.sounds.gameOver = () => this.playGameOverSound();
+            }
+            
+            playTone(frequency, duration, type = 'sine') {
+                if (!this.enabled || !this.audioContext) return;
+                
+                try {
+                    // 恢复AudioContext（用户交互后才能播放）
+                    if (this.audioContext.state === 'suspended') {
+                        this.audioContext.resume();
+                    }
+                    
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.masterGain);
+                    
+                    oscillator.frequency.value = frequency;
+                    oscillator.type = type;
+                    
+                    // 淡入淡出效果
+                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.5, this.audioContext.currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + duration);
+                } catch (error) {
+                    console.warn('Error playing tone:', error);
+                }
+            }
+            
+            playExplosionSound() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                try {
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(() => {
+                            this.playTone(
+                                100 + Math.random() * 200, 
+                                0.1, 
+                                ['square', 'sawtooth'][Math.floor(Math.random() * 2)]
+                            );
+                        }, i * 50);
+                    }
+                } catch (error) {
+                    console.warn('Error playing explosion sound:', error);
+                }
+            }
+            
+            playZapSound() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                try {
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            this.playTone(
+                                800 + Math.random() * 400, 
+                                0.05, 
+                                'sawtooth'
+                            );
+                        }, i * 20);
+                    }
+                } catch (error) {
+                    console.warn('Error playing zap sound:', error);
+                }
+            }
+            
+            playLaserSound() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.masterGain);
+                    
+                    oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 0.2);
+                    oscillator.type = 'sawtooth';
+                    
+                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.2);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.2);
+                } catch (error) {
+                    console.warn('Error playing laser sound:', error);
+                }
+            }
+            
+            playMissileSound() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.masterGain);
+                    
+                    oscillator.frequency.setValueAtTime(150, this.audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 0.5);
+                    oscillator.type = 'square';
+                    
+                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.2, this.audioContext.currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.5);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.5);
+                } catch (error) {
+                    console.warn('Error playing missile sound:', error);
+                }
+            }
+            
+            playLevelUpSound() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                try {
+                    const notes = [440, 554, 659, 880]; // C major arpeggio
+                    notes.forEach((note, index) => {
+                        setTimeout(() => {
+                            this.playTone(note, 0.15, 'sine');
+                        }, index * 100);
+                    });
+                } catch (error) {
+                    console.warn('Error playing level up sound:', error);
+                }
+            }
+            
+            playGameStartSound() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                try {
+                    const notes = [220, 330, 440, 554, 659, 880];
+                    notes.forEach((note, index) => {
+                        setTimeout(() => {
+                            this.playTone(note, 0.1, 'sine');
+                        }, index * 50);
+                    });
+                } catch (error) {
+                    console.warn('Error playing game start sound:', error);
+                }
+            }
+            
+            playGameOverSound() {
+                if (!this.enabled || !this.audioContext) return;
+                
+                try {
+                    const notes = [440, 330, 220, 110];
+                    notes.forEach((note, index) => {
+                        setTimeout(() => {
+                            this.playTone(note, 0.3, 'square');
+                        }, index * 200);
+                    });
+                } catch (error) {
+                    console.warn('Error playing game over sound:', error);
+                }
+            }
+            
+            play(soundName) {
+                if (this.sounds[soundName]) {
+                    this.sounds[soundName]();
+                }
+            }
+            
+            setEnabled(enabled) {
+                this.enabled = enabled;
+                if (this.masterGain) {
+                    this.masterGain.gain.value = enabled ? this.volume : 0;
+                }
+            }
+            
+            setVolume(volume) {
+                this.volume = Math.max(0, Math.min(1, volume));
+                if (this.masterGain) {
+                    this.masterGain.gain.value = this.enabled ? this.volume : 0;
+                }
+            }
+            
+            // 用户交互时调用，解锁音频播放
+            unlock() {
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+            }
+        }
             player: {
                 1: '日', // 日
                 2: '昌', // 昌
@@ -494,6 +738,9 @@
         const levelProgressBar = document.getElementById('levelProgressBar');
         const finalScoreElement = document.getElementById('finalScore');
         const survivalTimeElement = document.getElementById('survivalTime');
+        
+        // 初始化音效系统
+        const soundSystem = new SoundSystem();
         
         // 武器定义
         const weaponTypes = {
@@ -643,11 +890,17 @@
         
         // 开始游戏
         function startGame() {
+            // 解锁音频播放
+            soundSystem.unlock();
+            
             initGame();
             gameState.running = true;
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
             levelUpScreen.classList.add('hidden');
+            
+            // 播放游戏开始音效
+            soundSystem.play('gameStart');
             
             // 添加一个初始武器
             addWeapon('fireball');
@@ -665,6 +918,9 @@
             gameOverScreen.style.zIndex = '30';
             finalScoreElement.textContent = gameState.score;
             survivalTimeElement.textContent = formatTime(gameState.survivalTime);
+            
+            // 播放游戏结束音效
+            soundSystem.play('gameOver');
         }
         
         // 格式化时间
@@ -707,6 +963,9 @@
         function showLevelUpOptions() {
             levelUpScreen.classList.remove('hidden');
             levelUpOptions.innerHTML = '';
+            
+            // 播放升级音效
+            soundSystem.play('playerLevelUp');
             
             // 生成升级选项
             const options = [];
@@ -783,6 +1042,7 @@
                 `;
                 
                 optionElement.addEventListener('click', () => {
+                    soundSystem.play('levelUpSelect');
                     applyLevelUpOption(option);
                     levelUpScreen.classList.add('hidden');
                     gameState.running = true;
